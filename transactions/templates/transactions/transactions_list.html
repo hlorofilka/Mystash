@@ -1,0 +1,14 @@
+{% extends "base_generic.html" %}
+{% block content %}
+<h2>Hi, {{ user.get_username }}!</h2>
+<h3>There're your latest spendings:</h3>
+{% for i in i|rjust:7 %}
+<p>
+<li>
+    <b>DAY {{ forloop.counter }}:</b>
+    <p>Some sum {{ forloop.counter }}</p>
+    <p>Some comment {{ forloop.counter }}</p>
+</li>
+</p>
+{% endfor %}
+{% endblock %}
