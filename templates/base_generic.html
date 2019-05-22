@@ -18,7 +18,14 @@
           <li><a href="{% url 'index' %}">Home</a></li>
           {% if user.is_authenticated %}
             <li>User: {{ user.get_username }}</li>
-            <li><a href="{% url 'logout'%}?next={{request.path}}">Logout</a></li>   
+            <li><a href="{% url 'logout'%}?next={{request.path}}">Logout</a></li> 
+            <p><b>Your accounts:</b> </p>
+            {% for account in accounts %}
+              <div><li>{{account.title}}<a class="btn btn-default" href="{% url 'account_update' pk=account.pk %}"><b>⟲</b></a><a class="btn btn-default" href="{% url 'account_delete' pk=account.pk %}"><b>X</b></a>
+              </li>
+            </div>
+            {% endfor %}
+            <p><a class="btn btn-default" href="{% url 'add_account'%}"><b>New account</b></a></p> 
           {% else %}
             <li><a href="{% url 'login'%}?next={{request.path}}">Login</a></li>   
           {% endif %} 

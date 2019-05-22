@@ -1,0 +1,12 @@
+{% extends "base_generic.html" %}
+
+{% block content %}
+  <form action="" method="post">
+    {% csrf_token %}
+    <h3> Please, edit your account</h3>
+    <table>
+    {{ form.as_table }}
+    </table>
+    <input type="submit" value="Save changes">
+  </form>
+{% endblock %}
