@@ -25,7 +25,15 @@
               </li>
             </div>
             {% endfor %}
-            <p><a class="btn btn-default" href="{% url 'add_account'%}"><b>New account</b></a></p> 
+            <p><a class="btn btn-default" href="{% url 'add_account' acc_type='active' %}"><b>New account</b></a></p> 
+            
+            <p><b>Your savings:</b> </p>
+            {% for saving in savings %}
+              <div><li>{{saving.title}}<a class="btn btn-default" href="{% url 'account_update' pk=saving.pk %}"><b>⟲</b></a><a class="btn btn-default" href="{% url 'account_delete' pk=saving.pk %}"><b>X</b></a>
+              </li>
+            </div>
+            {% endfor %}
+            <p><a class="btn btn-default" href="{% url 'add_account' acc_type='passive' %}"><b>New saving</b></a></p> 
           {% else %}
             <li><a href="{% url 'login'%}?next={{request.path}}">Login</a></li>   
           {% endif %} 
