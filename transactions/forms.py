@@ -15,7 +15,7 @@ class EditTransactionForm(ModelForm):
     def __init__(self, *args, **kwargs):
         self.request = kwargs.pop("request")
         super(EditTransactionForm, self).__init__(*args, **kwargs)
-        self.fields["account"].queryset = Account.objects.filter(holder=self.request.user)
+        self.fields["account"].queryset = Account.objects.filter(holder=self.request.user).exclude(account_type='passive')
 
 class CreateAccountForm(forms.Form):
     created_date = forms.DateTimeField(initial=timezone.now)
