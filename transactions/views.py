@@ -7,6 +7,7 @@ from django.views.generic.edit import CreateView, DeleteView, UpdateView
 from django.utils import timezone
 from django.template import loader
 from .models import Transaction, Account
+from planning.models import Period, MandatoryTransaction
 from .forms import EditTransactionForm, CreateAccountForm
 
 def makelistofdays(since, transactions):
@@ -23,6 +24,7 @@ def makelistofdays(since, transactions):
         listofdays.append(thisday)
     return listofdays
 
+
 @login_required
 def index(request):
     template = loader.get_template('transactions/transactions_list.html')
@@ -31,11 +33,21 @@ def index(request):
     savings = Account.objects.filter(holder=request.user, account_type='passive').order_by('-created_date')
     since = datetime.datetime(2019,5,1,0,0,0)
     days = makelistofdays(since, transactions)
+    today = datetime.datetime.now()
+    periods = Period.objects.filter(owner=request.user, starts_at__lte=today, ends_at__gte=today)
+    if periods.count()>0:
+        have_plan = True
+        current_period = periods[0:1].get()
+    else:
+        have_plan = False
+        current_period = "You still have no plans..."
     context = {
         'transactions': transactions,
         'accounts': accounts,
         'savings': savings,
         'days': days,
+        'have_plan': have_plan,
+        'current_period': current_period,
     }
     return HttpResponse(template.render(context, request))
 

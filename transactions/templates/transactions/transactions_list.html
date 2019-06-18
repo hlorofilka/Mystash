@@ -1,11 +1,18 @@
 {% extends "base_generic.html" %}
 {% block content %}
 <h2>Hi, {{ user.get_username }}!</h2>
+<h3>{{current_period}} 
+    {% if have_plan %}
+        <a class="btn btn-default" href="{% url 'edit_period' pk=current_period.pk %}"><b>Change plans</b></a>
+    {% else %}
+        <a class="btn btn-default" href="{% url 'add_period' %}"><b>Let's plan</b></a>
+    {% endif %}
+</h3>
 <h3>There're your latest operations:</h3>
 <a class="btn btn-default" href="{% url 'add_transaction'%}"><b>Add new</b></a>
 {% for day in days %}
 <div>
-    <b><u>{{day.date|date:"M d, Y"}} totally: {{day.sum}}</u></b>
+    <b><u>{{day.date|date:"M d, Y"}} totally: {{day.sum|floatformat:2}}</u></b>
 </div>
 {% for transaction in day.transactionsofday %}
 <div>

@@ -32,12 +32,14 @@ ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
     'transactions.apps.TransactionsConfig',
+    'planning.apps.PlanningConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'djangoformsetjs',
 ]
 
 MIDDLEWARE = [
@@ -118,6 +120,10 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
+# STATIC_ROOT = ''
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "static"),
+]
 STATIC_URL = '/static/'
 LOGIN_REDIRECT_URL = '/transactions/'
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
