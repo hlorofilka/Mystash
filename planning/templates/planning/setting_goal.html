@@ -1,0 +1,48 @@
+{% extends "base_generic.html" %}
+{% load static %}
+{% block content %}
+<script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+<script>
+    $(function() {
+        $('#goal-slider').slider({
+            min: 0,
+            max: "{{period.free_money}}",
+            value: "{{period.goal}}",
+            slide: function(event, ui) {
+                var val = ui.value;
+                $('#goal-amount').val(val);
+                $('#daylimit-slider').slider("value", ("{{period.free_money}}"-val)/"{{period.duration}}");
+                $('#daylimit-amount').val( $( "#daylimit-slider" ).slider( "option", "value" ));
+            }
+        });
+
+        $('#daylimit-slider').slider({
+            min: 0,
+            max: "{{period.max_daylimit}}",
+            value: ("{{period.free_money}}"-"{{period.goal}}")/"{{period.duration}}",
+            slide: function(event, ui) {
+                var val = ui.value;
+                $('#daylimit-amount').val(ui.value);
+                $('#goal-slider').slider("value", "{{period.free_money}}"-val*"{{period.duration}}");
+                $('#goal-amount').val( $( "#goal-slider" ).slider( "option", "value" ));
+            }
+        });
+        $('#goal-amount').val( $( "#goal-slider" ).slider( "option", "value" ));
+        $('#daylimit-amount').val( Math.trunc($( "#daylimit-slider" ).slider( "option", "value" )));
+    });
+</script>
+<form action="" method="POST">
+        {% csrf_token %}
+            <h2>Let's plan your period!</h2>
+            <h3>Desired goal: <input type='number' id='goal-amount' name ="goal" readonly  style="border:0;"></h3>
+            <div id="goal-slider"></div>
+            <h3>Supposed day limit: <input type='number' id='daylimit-amount' name="daylimit" readonly style="border:0;"></h3>        
+            <div id="daylimit-slider"></div>
+            <p></p>
+            <a class="btn btn-default" href="{% url 'edit_period' pk=period.pk %}"><b>Back to period</b></a>
+            <input type="submit" value="Save"/>
+</form>
+     
+
+{% endblock %}

@@ -8,8 +8,17 @@ class Account(models.Model):
     created_date = models.DateTimeField(default=timezone.now)
     title = models.CharField(max_length=200)
     holder = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, default = None)
+    account_type_choice = (('active', 'active'), ('passive','savings'))
+    account_type = models.CharField(max_length=7, choices=account_type_choice, null=True, blank=True, default = None)
     def __str__(self):
         return self.title
+    def balance(self):
+        transactions = Transaction.objects.filter(account=self)
+        balance = 0
+        for transaction in transactions:
+            balance += float(transaction.transaction_type+str(transaction.amount))
+        return balance
+
 
 class Transaction(models.Model):
     created_date = models.DateTimeField(default=timezone.now)

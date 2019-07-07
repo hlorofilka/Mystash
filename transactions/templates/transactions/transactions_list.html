@@ -1,12 +1,23 @@
 {% extends "base_generic.html" %}
 {% block content %}
 <h2>Hi, {{ user.get_username }}!</h2>
+<h3>{{current_period}} 
+    {% if have_plan %}
+        <a class="btn btn-default" href="{% url 'edit_period' pk=current_period.pk %}"><b>Change plans</b></a>
+    {% else %}
+        <a class="btn btn-default" href="{% url 'add_period' %}"><b>Let's plan</b></a>
+    {% endif %}
+</h3>
 <h3>There're your latest operations:</h3>
 <a class="btn btn-default" href="{% url 'add_transaction'%}"><b>Add new</b></a>
-{% for transaction in transactions %}
+{% for day in days %}
+<div>
+    <b><u>{{day.date|date:"M d, Y"}} totally: {{day.sum|floatformat:2}}</u></b>
+</div>
+{% for transaction in day.transactionsofday %}
 <div>
 <li>
-    <b>{{ transaction.created_date }}:</b>
+    <b>{{ transaction.created_date|date:"P" }}:</b>
     <p>{{ transaction.transaction_type}}{{ transaction.amount}} {{ transaction.comment}}
             {% if user.is_authenticated %}
             <a class="btn btn-default" href="{% url 'edit_transaction' pk=transaction.pk %}"><b>Edit</b></a><a class="btn btn-default" href="{% url 'transaction_delete' pk=transaction.pk %}"><b>Delete</b></a>
@@ -15,5 +26,6 @@
     
 </li>
 </div>
+{% endfor %}
 {% endfor %}
 {% endblock %}

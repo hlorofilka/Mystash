@@ -5,6 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+  <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/smoothness/jquery-ui.css">
   <!-- Add additional CSS in static file -->
   {% load static %}
   <link rel="stylesheet" href="{% static 'css/styles.css' %}">
@@ -18,14 +19,25 @@
           <li><a href="{% url 'index' %}">Home</a></li>
           {% if user.is_authenticated %}
             <li>User: {{ user.get_username }}</li>
+            <li><a href="{% url 'add_period' %}">To plan</a></li>
             <li><a href="{% url 'logout'%}?next={{request.path}}">Logout</a></li> 
             <p><b>Your accounts:</b> </p>
             {% for account in accounts %}
-              <div><li>{{account.title}}<a class="btn btn-default" href="{% url 'account_update' pk=account.pk %}"><b>⟲</b></a><a class="btn btn-default" href="{% url 'account_delete' pk=account.pk %}"><b>X</b></a>
+              <div><li>{{account.title}}: 
+                <p>{{account.balance|floatformat:2}}<a class="btn btn-default" href="{% url 'account_update' pk=account.pk %}"><b>⟲</b></a><a class="btn btn-default" href="{% url 'account_delete' pk=account.pk %}"><b>X</b></a></p>
               </li>
             </div>
             {% endfor %}
-            <p><a class="btn btn-default" href="{% url 'add_account'%}"><b>New account</b></a></p> 
+            <p><a class="btn btn-default" href="{% url 'add_account' acc_type='active' %}"><b>New account</b></a></p> 
+            
+            <p><b>Your savings:</b> </p>
+            {% for saving in savings %}
+              <div><li>{{saving.title}}: 
+                <p>{{saving.balance|floatformat:2}}<a class="btn btn-default" href="{% url 'account_update' pk=saving.pk %}"><b>⟲</b></a><a class="btn btn-default" href="{% url 'account_delete' pk=saving.pk %}"><b>X</b></a></p>
+              </li>
+            </div>
+            {% endfor %}
+            <p><a class="btn btn-default" href="{% url 'add_account' acc_type='passive' %}"><b>New saving</b></a></p> 
           {% else %}
             <li><a href="{% url 'login'%}?next={{request.path}}">Login</a></li>   
           {% endif %} 
