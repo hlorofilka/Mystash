@@ -1,0 +1,22 @@
+{% extends "base_generic.html" %}
+{% block content %}
+<h3>In this period your goal was {{period.goal}}</h3>
+<h3>You've achieved {{period.at_the_end|floatformat:2}}</h3>
+<h3>Your plan is {{period.completion_rate|floatformat:2}}% complete</h3>
+
+<form method="post">
+        {% csrf_token %}
+        <p>
+            <b>Split the saved money between the accounts:</b>
+        </p>
+        <table> 
+            <tr>
+            {{ formset }}
+            </tr>
+            <hr>
+        </table>
+        <p></p>
+        <button type="submit">Finish it</button>
+</form>
+
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "base_generic.html" %}
+{% block content %}
+    <h2>Accounts' balance  at {{period.starts_at}}:</h2>
+    {% for acc in balances %}
+    <div>
+        <li><b>{{acc.title}}: {{acc.date_balance|floatformat:2}}</b></li>
+        
+    </div>
+    {% endfor %}
+    <a class="btn btn-default" href="{% url 'set_goal' pk=period.pk %}"><b>All right</b></a>
+{% endblock %}

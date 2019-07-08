@@ -7,9 +7,10 @@ from django.views.generic.edit import CreateView, DeleteView, UpdateView
 from django.utils import timezone
 from django.template import loader
 from django.db import transaction
+from django.forms import inlineformset_factory, formset_factory, modelformset_factory
 from .models import Period
-from transactions.models import Account
-from .forms import MandatoryTransactionFormSet, MandatoryTransactionFormSetEdit, PeriodGoalForm
+from transactions.models import Account, Transaction
+from .forms import MandatoryTransactionFormSet, MandatoryTransactionFormSetEdit, PeriodGoalForm, SavingsDistributionForm
 
 # Create your views here.
 class PeriodCreate(CreateView):
@@ -38,7 +39,7 @@ class PeriodMandatoryTransactionCreate(CreateView):
             if mandatorytransactions.is_valid():
                 mandatorytransactions.instance = self.object
                 mandatorytransactions.save()
-            return HttpResponseRedirect(reverse('set_goal', kwargs={'pk': self.object.pk}))
+            return HttpResponseRedirect(reverse('check_balances', kwargs={'pk': self.object.pk}))
         return super(PeriodMandatoryTransactionCreate, self).form_valid(form)
 
 class PeriodUpdate(UpdateView):
@@ -66,8 +67,76 @@ class PeriodMandatoryTransactionUpdate(UpdateView):
             if mandatorytransactions.is_valid():
                 mandatorytransactions.instance = self.object
                 mandatorytransactions.save()
-            return HttpResponseRedirect(reverse('set_goal', kwargs={'pk': self.object.pk}))
+            return HttpResponseRedirect(reverse('check_balances', kwargs={'pk': self.object.pk}))
         return super(PeriodMandatoryTransactionUpdate, self).form_valid(form)
+
+def get_date_balances(request, day):
+    accounts = Account.objects.filter(holder=request.user)
+    balances =[]
+    for account in accounts:
+        balance = {'title': account.title, 'date_balance': account.date_balance(day)}
+        balances.append(balance)
+    return balances
+
+
+
+def check_balances(request, pk):
+    period = get_object_or_404(Period, pk=pk)
+
+    accounts = Account.objects.filter(holder=request.user).exclude(account_type='passive').order_by('-created_date')
+    savings = Account.objects.filter(holder=request.user, account_type='passive').order_by('-created_date')
+    balances = get_date_balances(request, period.starts_at)
+    context = {
+        'accounts': accounts,
+        'savings': savings,
+        'period': period,
+        'balances': balances
+    }
+
+    return render(request, 'planning/check_balance.html', context)
+
+def prepare_initial_distribution(savings):
+    initial = []
+    for saving in savings:
+        initial.append({'account': Account.objects.get(pk=saving.pk), 'amount': 0})
+    return initial
+
+
+def finish_the_period(request, pk):
+    period = get_object_or_404(Period, pk=pk)
+    period.ends_at = datetime.date.today()
+    savings = Account.objects.filter(holder=request.user, account_type='passive').order_by('-created_date')
+    initial_data = prepare_initial_distribution(savings)
+    SavingsDistributionFormset = modelformset_factory(Transaction, fields=('account', 'amount'), extra=len(initial_data))
+    if request.method == 'POST':
+        formset = SavingsDistributionFormset(request.POST, queryset = Transaction.objects.none(), initial = initial_data)
+        if formset.is_valid():
+            period.save()
+            for form in formset:
+                if form.is_valid():
+                    new_transaction = form.save()
+                    new_transaction.created_date = datetime.datetime.combine(datetime.date.today(), datetime.datetime.max.time())
+                    new_transaction.owner = request.user
+                    new_transaction.transaction_type = '+'
+                    new_transaction.comment = 'Finish the period'
+                    new_transaction.save()
+            # do something with the formset.cleaned_data
+            return HttpResponseRedirect(reverse('index'))
+    else:
+        formset = SavingsDistributionFormset(queryset = Transaction.objects.none(), initial = initial_data)
+    
+
+    accounts = Account.objects.filter(holder=request.user).exclude(account_type='passive').order_by('-created_date')
+    balances = get_date_balances(request, period.starts_at)
+    context = {
+        'accounts': accounts,
+        'savings': savings,
+        'period': period,
+        'formset': formset,
+    }
+
+    return render(request, 'planning/finish_period.html', context)
+
     
 
 def set_the_goal(request, pk):
