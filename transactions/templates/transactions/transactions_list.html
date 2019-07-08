@@ -4,21 +4,27 @@
 <h3>{{current_period}} 
     {% if have_plan %}
         <a class="btn btn-default" href="{% url 'edit_period' pk=current_period.pk %}"><b>Change plans</b></a>
+        <a class="btn btn-default" href="{% url 'finish_the_period' pk=current_period.pk %}"><b>Finish now</b></a>
     {% else %}
         <a class="btn btn-default" href="{% url 'add_period' %}"><b>Let's plan</b></a>
     {% endif %}
 </h3>
 <h3>There're your latest operations:</h3>
-<a class="btn btn-default" href="{% url 'add_transaction'%}"><b>Add new</b></a>
+<a class="btn btn-default" href="{% url 'add_transaction' tr_type='transaction' %}"><b>Add new</b></a>
+<a class="btn btn-default" href="{% url 'add_transaction' tr_type='save_up' %}"><b>Save up</b></a>
 {% for day in days %}
 <div>
+    {% if have_plan %}
+        <b><u>{{day.date|date:"M d, Y"}} available: {{day.available|floatformat:2}} spend: {{day.sum|floatformat:2}} totally: {{day.result|floatformat:2}}</u></b>
+    {% else %}
     <b><u>{{day.date|date:"M d, Y"}} totally: {{day.sum|floatformat:2}}</u></b>
+    {% endif %}
 </div>
 {% for transaction in day.transactionsofday %}
 <div>
 <li>
     <b>{{ transaction.created_date|date:"P" }}:</b>
-    <p>{{ transaction.transaction_type}}{{ transaction.amount}} {{ transaction.comment}}
+    <p>{{ transaction}}
             {% if user.is_authenticated %}
             <a class="btn btn-default" href="{% url 'edit_transaction' pk=transaction.pk %}"><b>Edit</b></a><a class="btn btn-default" href="{% url 'transaction_delete' pk=transaction.pk %}"><b>Delete</b></a>
             {% endif %}
@@ -29,3 +35,21 @@
 {% endfor %}
 {% endfor %}
 {% endblock %}
+
+{% block planlist %}
+    {% if have_plan %}
+        <ul id="plans" class="sidebar-nav">
+                <b>Your plans:</b>
+        {% for plan in plans %}
+            {% if plan.is_completed %}
+                <li><input type="checkbox" checked="checked"> <label>{{plan.title}}: {{plan.money_left|floatformat:2}}</label></li>
+            {% else %}
+            <li><input type="checkbox"> <label>{{plan.title}}: {{plan.money_left|floatformat:2}}</label></li>
+            {% endif %}
+        
+        {% endfor %}
+        </ul>
+    {% endif %}
+{% endblock %}
+
+

@@ -8,21 +8,96 @@ from django.utils import timezone
 from django.template import loader
 from .models import Transaction, Account
 from planning.models import Period, MandatoryTransaction
-from .forms import EditTransactionForm, CreateAccountForm
+from .forms import EditTransactionForm, CreateAccountForm, EditSaveUp
 
-def makelistofdays(since, transactions):
+
+
+def get_current_period(request):
     today = datetime.datetime.now()
-    delta = (today-since).days
+    periods = Period.objects.filter(owner=request.user, starts_at__lte=today, ends_at__gte=today)
+    if periods.count()>0:
+        current_period = periods[0:1].get()
+    else:
+        current_period = "You still have no plans..."
+    return current_period
+
+def get_plans(request):
+    period = get_current_period(request)
+    if period == "You still have no plans...":
+        plans = MandatoryTransaction.objects.none()
+    else:
+        plans = period.mandatorytransaction_set.all()
+    return plans
+
+def do_have_plan(request):
+    period = get_current_period(request)
+    if period == "You still have no plans...":
+        return False
+    else:
+        return True
+
+def get_not_completed_plans(request):
+    plans = get_plans(request)
+    completed =[]
+    for plan in plans:
+        if plan.is_completed():
+            completed.append(plan.pk)
+    cur_plans = plans.exclude(pk__in=completed) 
+    
+    return cur_plans
+
+def get_deviations(request):
+    plans = get_plans(request)
+    completed =[]
+    for plan in plans:
+        if plan.is_completed():
+            completed.append(plan.pk)
+    com_plans = plans.filter(pk__in=completed)
+    deviations = []
+    for com_plan in com_plans:
+        last_commit = com_plan.transaction_set.last()
+        if com_plan.transaction_type == '+':
+            delta = -1 * com_plan.money_left()
+        else:
+            delta = com_plan.money_left()
+        deviation = {'date': last_commit.created_date.date(), 'deviation': delta} 
+        deviations.append(deviation)
+    return deviations  
+
+
+def makelistofdays(since, transactions, current_period, request):
+    today = datetime.datetime.now().date()
+    if current_period != "You still have no plans...":
+        since = current_period.starts_at
+        per_day = current_period.daylimit()
+    else:
+        since = since.date()
+        per_day = 0
+    delta = (today-since).days+1
     listofdays = []
-    for i in range(delta+1):
-        date = today - datetime.timedelta(days=i)
+    prev_result = 0
+    
+    for i in range(delta):
+        date = since+ datetime.timedelta(days=i)
         sum=0
         transactionsofday = transactions.filter(created_date__day=date.day, created_date__month=date.month, created_date__year=date.year)
         for transaction in transactionsofday:
-            sum += float(transaction.transaction_type+str(transaction.amount))
-        thisday = {"date": date, "sum": sum, 'transactionsofday': transactionsofday}
-        listofdays.append(thisday)
+            if not transaction.is_planned():
+                if transaction.account.account_type == 'active':
+                    sum += float(transaction.transaction_type+str(transaction.amount))
+                else:
+                    sum -= float(transaction.transaction_type+str(transaction.amount))
+        deviations = get_deviations(request)
+        for deviation in deviations:
+            if deviation["date"] == date:
+                sum += float(deviation["deviation"])
+        available_sum = per_day+prev_result
+        day_result = available_sum+sum
+        prev_result = day_result
+        thisday = {"date": date, "available": available_sum, "sum": sum, 'result': day_result, 'transactionsofday': transactionsofday}
+        listofdays.insert(0,thisday)
     return listofdays
+    
 
 
 @login_required
@@ -32,15 +107,10 @@ def index(request):
     accounts = Account.objects.filter(holder=request.user).exclude(account_type='passive').order_by('-created_date')
     savings = Account.objects.filter(holder=request.user, account_type='passive').order_by('-created_date')
     since = datetime.datetime(2019,5,1,0,0,0)
-    days = makelistofdays(since, transactions)
-    today = datetime.datetime.now()
-    periods = Period.objects.filter(owner=request.user, starts_at__lte=today, ends_at__gte=today)
-    if periods.count()>0:
-        have_plan = True
-        current_period = periods[0:1].get()
-    else:
-        have_plan = False
-        current_period = "You still have no plans..."
+    current_period = get_current_period(request)
+    plans = get_plans(request)
+    have_plan = do_have_plan(request)
+    days = makelistofdays(since, transactions, current_period, request)
     context = {
         'transactions': transactions,
         'accounts': accounts,
@@ -48,20 +118,31 @@ def index(request):
         'days': days,
         'have_plan': have_plan,
         'current_period': current_period,
+        'plans': plans
     }
     return HttpResponse(template.render(context, request))
 
 @login_required
 def edit_transaction(request, pk):
     transaction = get_object_or_404(Transaction, pk=pk)
+    plans = get_not_completed_plans(request) 
+    if transaction.is_planned():
+        plans = plans| MandatoryTransaction.objects.filter(pk = transaction.planned_transaction.pk)
     if request.method == 'POST':
-        form = EditTransactionForm(request.POST, instance=transaction, request=request)
+        if transaction.account.account_type == 'active':
+            form = EditTransactionForm(request.POST, instance=transaction, request=request, plans = plans)
+        else:
+            form = EditSaveUp(request.POST, instance=transaction, request=request)
+
         if form.is_valid():
             transaction = form.save(commit=False)
             transaction.save()
             return HttpResponseRedirect(reverse('index'))
     else:
-        form = EditTransactionForm(instance=transaction, request=request)
+        if transaction.account.account_type == 'active':
+            form = EditTransactionForm(instance=transaction, request=request, plans = plans)
+        else:
+            form = EditSaveUp(instance=transaction, request=request)
     accounts = Account.objects.filter(holder=request.user).exclude(account_type='passive').order_by('-created_date')
     savings = Account.objects.filter(holder=request.user, account_type='passive').order_by('-created_date')
     context = {
@@ -78,16 +159,24 @@ class TransactionDelete(DeleteView):
     success_url = reverse_lazy('index')
 
 @login_required
-def add_transaction(request):
+def add_transaction(request, tr_type):
+    plans = get_not_completed_plans(request)
     if request.method == 'POST':
-        form = EditTransactionForm(request.POST, request=request)
+        if tr_type == 'save_up':
+            form = EditSaveUp(request.POST, request=request)    
+        else:
+            form = EditTransactionForm(request.POST, request=request, plans = plans)
+        
         if form.is_valid():
             transaction = form.save(commit=False)
             transaction.owner = request.user
             transaction.save()
             return HttpResponseRedirect(reverse('index'))
     else:
-        form = EditTransactionForm(request=request)
+        if tr_type == 'save_up':
+            form = EditSaveUp(request=request)
+        else:
+            form = EditTransactionForm(request=request, plans = plans)
     accounts = Account.objects.filter(holder=request.user).exclude(account_type='passive').order_by('-created_date')
     savings = Account.objects.filter(holder=request.user, account_type='passive').order_by('-created_date')
     return render(request, 'transactions/edit_transaction.html', {'form': form, 'accounts': accounts, 'savings': savings})
